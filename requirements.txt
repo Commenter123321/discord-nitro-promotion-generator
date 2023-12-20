@@ -1,0 +1,4 @@
+operagxdriver
+selenium
+requests
+Brotli
