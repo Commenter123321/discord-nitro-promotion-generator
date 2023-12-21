@@ -11,6 +11,7 @@ if os.path.exists(".env"):
 else:
     print(".env doesn't exist")
     import sys
+
     sys.exit(1)
 
 PROMOTION_PREFIX = "https://discord.com/billing/partner-promotions/1180231712274387115/"
@@ -38,9 +39,14 @@ webhookUrl = os.getenv("WEBHOOK_URL")
 if mode == "webdriver":
     from operagxdriver import start_opera_driver
     from selenium.webdriver.common.by import By
+
     driver = start_opera_driver(
-        opera_browser_exe=os.getenv("OPERA_GX_EXECUTABLE") or r"C:\Program Files\Opera GX\opera.exe",
-        opera_driver_exe=os.getenv("OPERA_GX_DRIVER") or "operadriver.exe",
+        opera_browser_exe=os.getenv(
+            "OPERA_GX_EXECUTABLE"
+        ) or r"C:\Program Files\Opera GX\opera.exe",
+        opera_driver_exe=os.getenv(
+            "OPERA_GX_DRIVER"
+        ) or "operadriver.exe",
         arguments=(
             "--no-sandbox",
             "--test-type",
@@ -78,7 +84,12 @@ if mode == "webdriver":
                 driver.switch_to.window(handle)
                 if "https://discord.com" in driver.current_url:
                     print("new promotion:", driver.current_url)
-                    requests.post(webhookUrl, json={"content": f"<{driver.current_url}>"}, timeout=5)
+                    requests.post(
+                        webhookUrl,
+                        json={
+                            "content": f"<{driver.current_url}>"
+                        }, timeout=5
+                    )
                     driver.close()
 
 
@@ -104,6 +115,7 @@ if mode == "webdriver":
     print("driver.quit() called, shutting down")
 elif mode == "request":
     import requests
+
     requestDelay = float(os.getenv("REQUEST_DELAY")) or 1.5
     s = requests.session()
     while True:
@@ -146,4 +158,5 @@ elif mode == "request":
 else:
     print(f"Invalid mode: '{mode}'.")
     import sys
+
     sys.exit(1)
