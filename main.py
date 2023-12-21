@@ -22,8 +22,7 @@ def generate_uuid():
 
 
 def hash_string(input_string):
-    sha_signature = hashlib.sha256(input_string.encode()).hexdigest()
-    return sha_signature
+    return hashlib.sha256(input_string.encode()).hexdigest()
 
 
 if config.mode == "webdriver":
