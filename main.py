@@ -124,7 +124,7 @@ elif config.mode == "request":
         promotion_url = promotion_prefix + r.json()["token"]
         print("new promotion:", promotion_url)
         requests.post(config.webhook_url, json={"content": f"<{promotion_url}>"})
-        sleep(1.5)
+        sleep(config.request_delay)
         pass
 else:
     raise Exception(f"Invalid mode: '{config.mode}'.")
