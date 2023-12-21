@@ -2,13 +2,11 @@
 Discord promotion link generator program.
 """
 
-from requests import HTTPError
-from random import choice
+from random import choice, randint
+from time import sleep, time
 import concurrent.futures
-from time import sleep
 import requests
 import hashlib
-import random
 import os
 
 if os.path.exists(".env"):
@@ -30,7 +28,7 @@ def generate_uuid():
     :return: A random Opera GX style UUID or whatever.
     """
     def replace(c):
-        num = random.randint(0, 15)
+        num = randint(0, 15)
         if c == 'x':
             return hex(num)[2:]  # remove '0x' prefix
         return hex((3 & num) | 8)[2:]  # remove '0x' prefix
@@ -52,18 +50,20 @@ if proxies is not None:
     proxies = proxies.split(";")
 webhookUrl = os.getenv("WEBHOOK_URL")
 if not webhookUrl:
-    from time import time
     os.makedirs("outputs", exist_ok=True)
     outputFile = f"outputs/output-{str(int(time()))}.txt"
-    with open(outputFile, "w+") as f:
+    with open(outputFile, "w+", encoding="utf-8") as f:
         f.write("")
 else:
     webhookProxy = os.getenv("PROXY_WEBHOOK")
 
 
 def save_promotion(promotion_link):
+    """
+    :param promotion_link: The promotion url to save.
+    """
     if not webhookUrl:
-        with open(outputFile, "a") as out:
+        with open(outputFile, "a", encoding="utf-8") as out:
             out.write(f"{promotion_link}\n")
     else:
         res = requests.post(
@@ -82,6 +82,10 @@ s = requests.session()
 
 
 def worker(n):
+    """
+    Starts a worker that generates discord nitro promotion codes.
+    :param n: worker id
+    """
     print("worker:", n)
     while True:
         s.cookies.clear()
@@ -111,7 +115,7 @@ def worker(n):
                               "OPR/105.0.0.0"
             },
             json={"partnerUserId": hash_string(generate_uuid())},
-            proxies={"https": random.choice(proxies)} if proxies else None,
+            proxies={"https": choice(proxies)} if proxies else None,
             timeout=10
         )
 
@@ -131,5 +135,6 @@ def worker(n):
 THREAD_AMOUNT = int(os.getenv("THREAD_AMOUNT")) or 3
 
 with concurrent.futures.ThreadPoolExecutor(max_workers=THREAD_AMOUNT) as executor:
+    from requests import HTTPError
     for i in range(THREAD_AMOUNT):
         executor.submit(worker, i)
