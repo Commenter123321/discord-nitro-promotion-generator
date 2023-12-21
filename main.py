@@ -135,6 +135,7 @@ elif mode == "request":
             json={"partnerUserId": hash_string(generate_uuid())},
             proxies={"http": proxy, "https": proxy} if proxy else None
         )
+        r.raise_for_status()
 
         promotion_url = promotionPrefix + r.json()["token"]
         print("new promotion:", promotion_url)
