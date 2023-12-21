@@ -5,10 +5,17 @@ webhook_url = "https://discord.com/api/webhooks/.../..."
 
 """
 The mode to use when getting the promotion codes.
-You can either use 'webdriver' which is more reliable, but slower...
-... or you can use 'request' which is insanely fast, but probably unreliable.
+You can either use 'webdriver' which is not working right now,
+... or you can use 'request' which is insanely fast and it's working.
 """
 mode = "request"
+
+"""
+This only applies to 'request' mode.
+Time in seconds to wait before sending another request.
+I don't recommend going faster than this unless you have a proxy set.
+"""
+request_delay = 1.5
 
 """
 The proxy to use when acquiring the promotion codes.

@@ -2,9 +2,29 @@ from operagxdriver import start_opera_driver
 from selenium.webdriver.common.by import By
 from time import sleep
 import requests
+import hashlib
 import config
+import random
 
 promotion_prefix = "https://discord.com/billing/partner-promotions/1180231712274387115/"
+
+
+def generate_uuid():
+    def replace(c):
+        r = random.randint(0, 15)
+        if c == 'x':
+            return hex(r)[2:]  # remove '0x' prefix
+        else:
+            return hex((3 & r) | 8)[2:]  # remove '0x' prefix
+
+    uuid_format = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx"
+    return ''.join([replace(c) if c in 'xy' else c for c in uuid_format])
+
+
+def hash_string(input_string):
+    sha_signature = hashlib.sha256(input_string.encode()).hexdigest()
+    return sha_signature
+
 
 if config.mode == "webdriver":
     driver = start_opera_driver(
@@ -67,6 +87,7 @@ if config.mode == "webdriver":
             find_promo_link()
             if not find_free_nitro_site():
                 break
+            driver.delete_all_cookies()
             driver.refresh()
     except KeyboardInterrupt:
         pass
@@ -76,8 +97,10 @@ if config.mode == "webdriver":
     driver.quit()
     print("driver.quit() called, shutting down")
 elif config.mode == "request":
+    s = requests.session()
     while True:
-        r = requests.post(
+        s.cookies.clear()
+        r = s.post(
             "https://api.discord.gx.games/v1/direct-fulfillment",
             headers={
                 "accept": "*/*",
@@ -94,14 +117,14 @@ elif config.mode == "request":
                 "origin": "https://www.opera.com",
                 "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36 OPR/105.0.0.0"
             },
-            json={"partnerUserId": "6ef85751becffb5fe975e363950f574a9c8afd4f09e026844c796a339122ba13"},
+            json={"partnerUserId": hash_string(generate_uuid())},
             proxies={"http": config.proxy, "https": config.proxy} if config.proxy else None
         )
 
         promotion_url = promotion_prefix + r.json()["token"]
         print("new promotion:", promotion_url)
         requests.post(config.webhook_url, json={"content": f"<{promotion_url}>"})
-        sleep(2)
+        sleep(1.5)
         pass
 else:
     raise Exception(f"Invalid mode: '{config.mode}'.")
