@@ -130,7 +130,6 @@ def worker(n):
 THREAD_AMOUNT = int(os.getenv("THREAD_AMOUNT")) if os.getenv("THREAD_AMOUNT") else 3
 
 with concurrent.futures.ThreadPoolExecutor(max_workers=THREAD_AMOUNT) as executor:
-    from requests.exceptions import ReadTimeout, ProxyError, SSLError
     from requests import HTTPError
     import requests
     while True:
