@@ -79,7 +79,8 @@ def worker(n):
     Starts a worker that generates a discord nitro promotion code.
     :param n: worker id
     """
-    try:
+    r = None
+    with suppress():
         r = requests.post(
             "https://api.discord.gx.games/v1/direct-fulfillment",
             headers={
@@ -109,7 +110,8 @@ def worker(n):
             proxies={"https": choice(proxies)} if proxies else None,
             timeout=10
         )
-    except ReadTimeout | ProxyError | SSLError | Exception:
+
+    if not r:
         return
 
     try:
