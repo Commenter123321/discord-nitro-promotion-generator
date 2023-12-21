@@ -5,7 +5,6 @@ Discord promotion link generator program.
 from random import choice, randint
 from time import sleep, time
 import concurrent.futures
-import requests
 import hashlib
 import os
 
@@ -78,9 +77,6 @@ def save_promotion(promotion_link):
     return True
 
 
-s = requests.session()
-
-
 def worker(n):
     """
     Starts a worker that generates discord nitro promotion codes.
@@ -88,8 +84,7 @@ def worker(n):
     """
     print("worker:", n)
     while True:
-        s.cookies.clear()
-        r = s.post(
+        r = requests.post(
             "https://api.discord.gx.games/v1/direct-fulfillment",
             headers={
                 "accept": "*/*",
@@ -136,5 +131,6 @@ THREAD_AMOUNT = int(os.getenv("THREAD_AMOUNT")) or 3
 
 with concurrent.futures.ThreadPoolExecutor(max_workers=THREAD_AMOUNT) as executor:
     from requests import HTTPError
+    import requests
     for i in range(THREAD_AMOUNT):
         executor.submit(worker, i)
