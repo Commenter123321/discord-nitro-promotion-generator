@@ -10,6 +10,6 @@
 2. clone the repository with `git clone https://github.com/Commenter123321/discord-nitro-promotion-generator.git` (or download it and unzip)
 3. run `python -m pip install -r requirements.txt` to install the libraries required to run this program
 4. create a copy of the file `.example.env` named `.env`
-5. set the `webhookUrl` field in `.env` to a discord webhook
+5. set the `WEBHOOK_URL` field in `.env` to a discord webhook
 6. configure other things in `.env` if needed
 7. run the program with `python main.py`
