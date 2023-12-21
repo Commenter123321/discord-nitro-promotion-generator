@@ -10,7 +10,8 @@ if os.path.exists(".env"):
     load_dotenv(dotenv_path=".env")
 else:
     print(".env doesn't exist")
-    exit(1)
+    import sys
+    sys.exit(1)
 
 promotionPrefix = "https://discord.com/billing/partner-promotions/1180231712274387115/"
 
@@ -20,8 +21,7 @@ def generate_uuid():
         num = random.randint(0, 15)
         if c == 'x':
             return hex(num)[2:]  # remove '0x' prefix
-        else:
-            return hex((3 & num) | 8)[2:]  # remove '0x' prefix
+        return hex((3 & num) | 8)[2:]  # remove '0x' prefix
 
     uuid_format = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx"
     return ''.join([replace(c) if c in 'xy' else c for c in uuid_format])
@@ -119,7 +119,9 @@ elif mode == "request":
                 "accept-language": "en-US,en;q=0.9",
                 "accept-encoding": "gzip, deflate, br",
                 "content-type": "application/json",
-                "sec-ch-ua": "\"Opera GX\";v=\"105\", \"Chromium\";v=\"119\", \"Not?A_Brand\";v=\"24\"",
+                "sec-ch-ua": "\"Opera GX\";v=\"105\", "
+                             "\"Chromium\";v=\"119\", "
+                             "\"Not?A_Brand\";v=\"24\"",
                 "sec-ch-ua-mobile": "?0",
                 "sec-ch-ua-platform": "\"Windows\"",
                 "sec-fetch-dest": "empty",
@@ -129,10 +131,15 @@ elif mode == "request":
                 "origin": "https://www.opera.com",
                 "user-agent": "Mozilla/5.0 "
                               "(Windows NT 10.0; Win64; x64) "
-                              "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36 OPR/105.0.0.0"
+                              "AppleWebKit/537.36 "
+                              "(KHTML, like Gecko) "
+                              "Chrome/119.0.0.0 "
+                              "Safari/537.36 "
+                              "OPR/105.0.0.0"
             },
             json={"partnerUserId": hash_string(generate_uuid())},
-            proxies={"http": proxy, "https": proxy} if proxy else None
+            proxies={"http": proxy, "https": proxy} if proxy else None,
+            timeout=10
         )
         r.raise_for_status()
 
@@ -142,4 +149,5 @@ elif mode == "request":
         sleep(requestDelay)
 else:
     print(f"Invalid mode: '{mode}'.")
-    exit(1)
+    import sys
+    sys.exit(1)
