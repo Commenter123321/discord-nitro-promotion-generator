@@ -1,8 +1,8 @@
 """
 Discord promotion link generator program.
 """
-
 from random import choice, randint
+from contextlib import suppress
 from time import sleep, time
 import concurrent.futures
 import hashlib
@@ -14,7 +14,7 @@ if os.path.exists(".env"):
     load_dotenv(dotenv_path=".env")
 
 PROMOTION_PREFIX = "https://discord.com/billing/partner-promotions/1180231712274387115/"
-REQUEST_DELAY = float(os.getenv("REQUEST_DELAY")) or 1.5
+REQUEST_DELAY = float(os.getenv("REQUEST_DELAY")) if os.getenv("REQUEST_DELAY") else 1.5
 
 
 def generate_uuid():
@@ -56,29 +56,30 @@ def save_promotion(promotion_link):
     """
     :param promotion_link: The promotion url to save.
     """
-    if not webhookUrl:
-        with open(outputFile, "a", encoding="utf-8") as out:
-            out.write(f"{promotion_link}\n")
-    else:
-        res = requests.post(
-            webhookUrl,
-            json={"content": f"<{promotion_link}>"},
-            timeout=5,
-            proxies={"http": webhookProxy, "https": webhookProxy} if webhookProxy else None,
-        )
-        res.raise_for_status()
-        if res.status_code != 204:
-            return False
-    return True
+    with suppress():
+        if not webhookUrl:
+            with open(outputFile, "a", encoding="utf-8") as out:
+                out.write(f"{promotion_link}\n")
+        else:
+            res = requests.post(
+                webhookUrl,
+                json={"content": f"<{promotion_link}>"},
+                timeout=5,
+                proxies={"http": webhookProxy, "https": webhookProxy} if webhookProxy else None,
+            )
+            res.raise_for_status()
+            if res.status_code != 204:
+                return False
+        return True
+    return False
 
 
 def worker(n):
     """
-    Starts a worker that generates discord nitro promotion codes.
+    Starts a worker that generates a discord nitro promotion code.
     :param n: worker id
     """
-    print("worker:", n)
-    while True:
+    try:
         r = requests.post(
             "https://api.discord.gx.games/v1/direct-fulfillment",
             headers={
@@ -108,24 +109,28 @@ def worker(n):
             proxies={"https": choice(proxies)} if proxies else None,
             timeout=10
         )
+    except ReadTimeout | ProxyError | SSLError | Exception:
+        return
 
-        try:
-            r.raise_for_status()
-        except HTTPError as e:
-            print(e)
-            continue
+    try:
+        r.raise_for_status()
+    except HTTPError as e:
+        print(e)
+        return
 
-        promotion_url = PROMOTION_PREFIX + r.json()["token"]
-        print(f"{str(n)}: new promotion:", promotion_url)
-        if not save_promotion(promotion_url):
-            print("WARNING: couldn't save the promotion url")
-        sleep(REQUEST_DELAY)
+    promotion_url = PROMOTION_PREFIX + r.json()["token"]
+    print(f"{str(n)}: new promotion:", promotion_url)
+    if not save_promotion(promotion_url):
+        print("WARNING: couldn't save the promotion url")
+    sleep(REQUEST_DELAY)
 
 
-THREAD_AMOUNT = int(os.getenv("THREAD_AMOUNT")) or 3
+THREAD_AMOUNT = int(os.getenv("THREAD_AMOUNT")) if os.getenv("THREAD_AMOUNT") else 3
 
 with concurrent.futures.ThreadPoolExecutor(max_workers=THREAD_AMOUNT) as executor:
+    from requests.exceptions import ReadTimeout, ProxyError, SSLError
     from requests import HTTPError
     import requests
-    for i in range(THREAD_AMOUNT):
-        executor.submit(worker, i)
+    while True:
+        futures = [executor.submit(worker, i) for i in range(THREAD_AMOUNT)]
+        concurrent.futures.wait(futures)
