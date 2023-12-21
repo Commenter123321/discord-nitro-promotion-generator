@@ -2,3 +2,4 @@ operagxdriver
 selenium
 requests
 Brotli
+python-dotenv

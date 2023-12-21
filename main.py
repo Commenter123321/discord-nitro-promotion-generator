@@ -1,14 +1,17 @@
 from time import sleep
 import contextlib
-import requests
 import hashlib
 import random
 import os
 
-if os.path.exists("config.py"):
-    import config
+if os.path.exists(".env"):
+    from dotenv import load_dotenv
+    import os
+
+    load_dotenv(dotenv_path=".env")
 else:
-    raise Exception("config.py does not exist!")
+    print(".env doesn't exist")
+    exit(1)
 
 promotionPrefix = "https://discord.com/billing/partner-promotions/1180231712274387115/"
 
@@ -29,12 +32,16 @@ def hash_string(input_string):
     return hashlib.sha256(input_string.encode()).hexdigest()
 
 
-if config.mode == "webdriver":
+mode = os.getenv("mode") or "request"
+proxy = os.getenv("proxy")
+webhookUrl = os.getenv("webhookUrl")
+
+if mode == "webdriver":
     from operagxdriver import start_opera_driver
     from selenium.webdriver.common.by import By
     driver = start_opera_driver(
-        opera_browser_exe=config.opera_gx_executable,
-        opera_driver_exe=config.opera_driver,
+        opera_browser_exe=os.getenv("operaGxExecutable") or r"C:\Program Files\Opera GX\opera.exe",
+        opera_driver_exe=os.getenv("operaGxDriver") or "operadriver.exe",
         arguments=(
             "--no-sandbox",
             "--test-type",
@@ -42,8 +49,8 @@ if config.mode == "webdriver":
             "--no-first-run",
             "--incognito",
             "--start-maximized",
-            f"--proxy-server={config.proxy}",
-        ) if config.proxy else (
+            f"--proxy-server={proxy}",
+        ) if proxy else (
             "--no-sandbox",
             "--test-type",
             "--no-default-browser-check",
@@ -72,7 +79,7 @@ if config.mode == "webdriver":
                 driver.switch_to.window(handle)
                 if "https://discord.com" in driver.current_url:
                     print("new promotion:", driver.current_url)
-                    requests.post(config.webhook_url, json={"content": f"<{driver.current_url}>"})
+                    requests.post(webhookUrl, json={"content": f"<{driver.current_url}>"})
                     driver.close()
 
 
@@ -100,7 +107,9 @@ if config.mode == "webdriver":
 
     driver.quit()
     print("driver.quit() called, shutting down")
-elif config.mode == "request":
+elif mode == "request":
+    import requests
+    requestDelay = float(os.getenv("requestDelay")) or 1.5
     s = requests.session()
     while True:
         s.cookies.clear()
@@ -124,12 +133,13 @@ elif config.mode == "request":
                               "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36 OPR/105.0.0.0"
             },
             json={"partnerUserId": hash_string(generate_uuid())},
-            proxies={"http": config.proxy, "https": config.proxy} if config.proxy else None
+            proxies={"http": proxy, "https": proxy} if proxy else None
         )
 
         promotion_url = promotionPrefix + r.json()["token"]
         print("new promotion:", promotion_url)
-        requests.post(config.webhook_url, json={"content": f"<{promotion_url}>"})
-        sleep(config.request_delay)
+        requests.post(webhookUrl, json={"content": f"<{promotion_url}>"})
+        sleep(requestDelay)
 else:
-    raise Exception(f"Invalid mode: '{config.mode}'.")
+    print(f"Invalid mode: '{mode}'.")
+    exit(1)
