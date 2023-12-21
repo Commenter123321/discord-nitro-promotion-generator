@@ -2,8 +2,11 @@
 Discord promotion link generator program.
 """
 
+from requests import HTTPError
+from random import choice
+import concurrent.futures
 from time import sleep
-import contextlib
+import requests
 import hashlib
 import random
 import os
@@ -19,6 +22,7 @@ else:
     sys.exit(1)
 
 PROMOTION_PREFIX = "https://discord.com/billing/partner-promotions/1180231712274387115/"
+REQUEST_DELAY = float(os.getenv("REQUEST_DELAY")) or 1.5
 
 
 def generate_uuid():
@@ -43,105 +47,42 @@ def hash_string(input_string):
     return hashlib.sha256(input_string.encode()).hexdigest()
 
 
-mode = os.getenv("MODE") or "request"
-proxy = os.getenv("PROXY")
+proxies = os.getenv("PROXY")
+if proxies is not None:
+    proxies = proxies.split(";")
 webhookUrl = os.getenv("WEBHOOK_URL")
+if not webhookUrl:
+    from time import time
+    os.makedirs("outputs", exist_ok=True)
+    outputFile = f"outputs/output-{str(int(time()))}.txt"
+    with open(outputFile, "w+") as f:
+        f.write("")
+else:
+    webhookProxy = os.getenv("PROXY_WEBHOOK")
 
-if mode == "webdriver":
-    from operagxdriver import start_opera_driver
-    from selenium.webdriver.common.by import By
 
-    driver = start_opera_driver(
-        opera_browser_exe=os.getenv(
-            "OPERA_GX_EXECUTABLE"
-        ) or r"C:\Program Files\Opera GX\opera.exe",
-        opera_driver_exe=os.getenv(
-            "OPERA_GX_DRIVER"
-        ) or "operadriver.exe",
-        arguments=(
-            "--no-sandbox",
-            "--test-type",
-            "--no-default-browser-check",
-            "--no-first-run",
-            "--incognito",
-            "--start-maximized",
-            f"--proxy-server={proxy}",
-        ) if proxy else (
-            "--no-sandbox",
-            "--test-type",
-            "--no-default-browser-check",
-            "--no-first-run",
-            "--incognito",
-            "--start-maximized",
+def save_promotion(promotion_link):
+    if not webhookUrl:
+        with open(outputFile, "a") as out:
+            out.write(f"{promotion_link}\n")
+    else:
+        res = requests.post(
+            webhookUrl,
+            json={"content": f"<{promotion_link}>"},
+            timeout=5,
+            proxies={"http": webhookProxy, "https": webhookProxy} if webhookProxy else None,
         )
-    )
-    with contextlib.suppress():
-        driver.get("https://www.opera.com/gx/discord-nitro")
-
-
-        def click_claim_btn():
-            """
-            Clicks a span with the `claim-button` id.
-            """
-            while True:
-                with contextlib.suppress():
-                    claim_btn = driver.find_element(By.XPATH, "//span[@id='claim-button']")
-                    if claim_btn is not None:
-                        claim_btn.click()
-                        break
-                sleep(2)
-                continue
-
-
-        def find_promo_link():
-            """
-            Cycles through all the open tabs,
-            and if a promotion link is found,
-            it sends the url to the webhook
-            defined in `.env` and closes the page.
-            """
-            for handle in driver.window_handles:
-                driver.switch_to.window(handle)
-                if "https://discord.com" in driver.current_url:
-                    print("new promotion:", driver.current_url)
-                    requests.post(
-                        webhookUrl,
-                        json={
-                            "content": f"<{driver.current_url}>"
-                        }, timeout=5
-                    )
-                    driver.close()
-
-
-        def find_free_nitro_site():
-            """
-            :return: True, if `https://www.opera.com/gx/discord-nitro` is still
-            open and selected, False otherwise.
-            """
-            for handle in driver.window_handles:
-                driver.switch_to.window(handle)
-                if "gx/discord-nitro" in driver.current_url:
-                    return True
+        res.raise_for_status()
+        if res.status_code != 204:
             return False
+    return True
 
 
-        while True:
-            sleep(4)
-            click_claim_btn()
-            sleep(4)
-            find_promo_link()
-            if not find_free_nitro_site():
-                break
-            driver.delete_all_cookies()
-            driver.refresh()
+s = requests.session()
 
-    driver.quit()
-    print("driver.quit() called, shutting down")
-elif mode == "request":
-    import requests
 
-    requestDelay = float(os.getenv("REQUEST_DELAY")) or 1.5
-    s = requests.session()
+def worker(n):
+    print("worker:", n)
     while True:
         s.cookies.clear()
         r = s.post(
@@ -170,17 +111,25 @@ elif mode == "request":
                               "OPR/105.0.0.0"
             },
             json={"partnerUserId": hash_string(generate_uuid())},
-            proxies={"http": proxy, "https": proxy} if proxy else None,
+            proxies={"https": random.choice(proxies)} if proxies else None,
             timeout=10
         )
-        r.raise_for_status()
+
+        try:
+            r.raise_for_status()
+        except HTTPError as e:
+            print(e)
+            continue
 
         promotion_url = PROMOTION_PREFIX + r.json()["token"]
-        print("new promotion:", promotion_url)
-        requests.post(webhookUrl, json={"content": f"<{promotion_url}>"}, timeout=5)
-        sleep(requestDelay)
-else:
-    print(f"Invalid mode: '{mode}'.")
-    import sys
+        print(f"{str(n)}: new promotion:", promotion_url)
+        if not save_promotion(promotion_url):
+            print("WARNING: couldn't save the promotion url")
+        sleep(REQUEST_DELAY)
 
-    sys.exit(1)
+
+THREAD_AMOUNT = int(os.getenv("THREAD_AMOUNT")) or 3
+
+with concurrent.futures.ThreadPoolExecutor(max_workers=THREAD_AMOUNT) as executor:
+    for i in range(THREAD_AMOUNT):
+        executor.submit(worker, i)
