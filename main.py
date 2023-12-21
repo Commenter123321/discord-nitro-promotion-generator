@@ -13,7 +13,7 @@ else:
     import sys
     sys.exit(1)
 
-promotionPrefix = "https://discord.com/billing/partner-promotions/1180231712274387115/"
+PROMOTION_PREFIX = "https://discord.com/billing/partner-promotions/1180231712274387115/"
 
 
 def generate_uuid():
@@ -31,16 +31,16 @@ def hash_string(input_string):
     return hashlib.sha256(input_string.encode()).hexdigest()
 
 
-mode = os.getenv("mode") or "request"
-proxy = os.getenv("proxy")
-webhookUrl = os.getenv("webhookUrl")
+mode = os.getenv("MODE") or "request"
+proxy = os.getenv("PROXY")
+webhookUrl = os.getenv("WEBHOOK_URL")
 
 if mode == "webdriver":
     from operagxdriver import start_opera_driver
     from selenium.webdriver.common.by import By
     driver = start_opera_driver(
-        opera_browser_exe=os.getenv("operaGxExecutable") or r"C:\Program Files\Opera GX\opera.exe",
-        opera_driver_exe=os.getenv("operaGxDriver") or "operadriver.exe",
+        opera_browser_exe=os.getenv("OPERA_GX_EXECUTABLE") or r"C:\Program Files\Opera GX\opera.exe",
+        opera_driver_exe=os.getenv("OPERA_GX_DRIVER") or "operadriver.exe",
         arguments=(
             "--no-sandbox",
             "--test-type",
@@ -58,7 +58,7 @@ if mode == "webdriver":
             "--start-maximized",
         )
     )
-    try:
+    with contextlib.suppress():
         driver.get("https://www.opera.com/gx/discord-nitro")
 
 
@@ -78,7 +78,7 @@ if mode == "webdriver":
                 driver.switch_to.window(handle)
                 if "https://discord.com" in driver.current_url:
                     print("new promotion:", driver.current_url)
-                    requests.post(webhookUrl, json={"content": f"<{driver.current_url}>"})
+                    requests.post(webhookUrl, json={"content": f"<{driver.current_url}>"}, timeout=5)
                     driver.close()
 
 
@@ -99,16 +99,12 @@ if mode == "webdriver":
                 break
             driver.delete_all_cookies()
             driver.refresh()
-    except KeyboardInterrupt:
-        pass
-    except Exception as e:
-        print("error:", e)
 
     driver.quit()
     print("driver.quit() called, shutting down")
 elif mode == "request":
     import requests
-    requestDelay = float(os.getenv("requestDelay")) or 1.5
+    requestDelay = float(os.getenv("REQUEST_DELAY")) or 1.5
     s = requests.session()
     while True:
         s.cookies.clear()
@@ -143,9 +139,9 @@ elif mode == "request":
         )
         r.raise_for_status()
 
-        promotion_url = promotionPrefix + r.json()["token"]
+        promotion_url = PROMOTION_PREFIX + r.json()["token"]
         print("new promotion:", promotion_url)
-        requests.post(webhookUrl, json={"content": f"<{promotion_url}>"})
+        requests.post(webhookUrl, json={"content": f"<{promotion_url}>"}, timeout=5)
         sleep(requestDelay)
 else:
     print(f"Invalid mode: '{mode}'.")
