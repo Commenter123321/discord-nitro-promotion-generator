@@ -12,11 +12,6 @@ if os.path.exists(".env"):
     from dotenv import load_dotenv
 
     load_dotenv(dotenv_path=".env")
-else:
-    print(".env doesn't exist")
-    import sys
-
-    sys.exit(1)
 
 PROMOTION_PREFIX = "https://discord.com/billing/partner-promotions/1180231712274387115/"
 REQUEST_DELAY = float(os.getenv("REQUEST_DELAY")) or 1.5
