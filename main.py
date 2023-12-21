@@ -18,6 +18,9 @@ PROMOTION_PREFIX = "https://discord.com/billing/partner-promotions/1180231712274
 
 
 def generate_uuid():
+    """
+    :return: A random Opera GX style UUID or whatever.
+    """
     def replace(c):
         num = random.randint(0, 15)
         if c == 'x':
@@ -29,6 +32,10 @@ def generate_uuid():
 
 
 def hash_string(input_string):
+    """
+    :param input_string: The string to hash.
+    :return: SHA256 hash of the input.
+    """
     return hashlib.sha256(input_string.encode()).hexdigest()
 
 
@@ -69,6 +76,9 @@ if mode == "webdriver":
 
 
         def click_claim_btn():
+            """
+            Clicks a span with the `claim-button` id.
+            """
             while True:
                 with contextlib.suppress():
                     claim_btn = driver.find_element(By.XPATH, "//span[@id='claim-button']")
@@ -80,6 +90,12 @@ if mode == "webdriver":
 
 
         def find_promo_link():
+            """
+            Cycles through all the open tabs,
+            and if a promotion link is found,
+            it sends the url to the webhook
+            defined in `.env` and closes the page.
+            """
             for handle in driver.window_handles:
                 driver.switch_to.window(handle)
                 if "https://discord.com" in driver.current_url:
@@ -94,6 +110,10 @@ if mode == "webdriver":
 
 
         def find_free_nitro_site():
+            """
+            :return: True, if `https://www.opera.com/gx/discord-nitro` is still
+            open and selected, False otherwise.
+            """
             for handle in driver.window_handles:
                 driver.switch_to.window(handle)
                 if "gx/discord-nitro" in driver.current_url:
