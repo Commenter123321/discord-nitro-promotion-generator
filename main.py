@@ -1,21 +1,25 @@
-from operagxdriver import start_opera_driver
-from selenium.webdriver.common.by import By
 from time import sleep
+import contextlib
 import requests
 import hashlib
-import config
 import random
+import os
 
-promotion_prefix = "https://discord.com/billing/partner-promotions/1180231712274387115/"
+if os.path.exists("config.py"):
+    import config
+else:
+    raise Exception("config.py does not exist!")
+
+promotionPrefix = "https://discord.com/billing/partner-promotions/1180231712274387115/"
 
 
 def generate_uuid():
     def replace(c):
-        r = random.randint(0, 15)
+        num = random.randint(0, 15)
         if c == 'x':
-            return hex(r)[2:]  # remove '0x' prefix
+            return hex(num)[2:]  # remove '0x' prefix
         else:
-            return hex((3 & r) | 8)[2:]  # remove '0x' prefix
+            return hex((3 & num) | 8)[2:]  # remove '0x' prefix
 
     uuid_format = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx"
     return ''.join([replace(c) if c in 'xy' else c for c in uuid_format])
@@ -26,6 +30,8 @@ def hash_string(input_string):
 
 
 if config.mode == "webdriver":
+    from operagxdriver import start_opera_driver
+    from selenium.webdriver.common.by import By
     driver = start_opera_driver(
         opera_browser_exe=config.opera_gx_executable,
         opera_driver_exe=config.opera_driver,
@@ -52,14 +58,13 @@ if config.mode == "webdriver":
 
         def click_claim_btn():
             while True:
-                try:
+                with contextlib.suppress():
                     claim_btn = driver.find_element(By.XPATH, "//span[@id='claim-button']")
                     if claim_btn is not None:
                         claim_btn.click()
                         break
-                except:
-                    sleep(2)
-                    continue
+                sleep(2)
+                continue
 
 
         def find_promo_link():
@@ -114,16 +119,17 @@ elif config.mode == "request":
                 "sec-fetch-site": "cross-site",
                 "referer": "https://www.opera.com/",
                 "origin": "https://www.opera.com",
-                "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36 OPR/105.0.0.0"
+                "user-agent": "Mozilla/5.0 "
+                              "(Windows NT 10.0; Win64; x64) "
+                              "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36 OPR/105.0.0.0"
             },
             json={"partnerUserId": hash_string(generate_uuid())},
             proxies={"http": config.proxy, "https": config.proxy} if config.proxy else None
         )
 
-        promotion_url = promotion_prefix + r.json()["token"]
+        promotion_url = promotionPrefix + r.json()["token"]
         print("new promotion:", promotion_url)
         requests.post(config.webhook_url, json={"content": f"<{promotion_url}>"})
         sleep(config.request_delay)
-        pass
 else:
     raise Exception(f"Invalid mode: '{config.mode}'.")
