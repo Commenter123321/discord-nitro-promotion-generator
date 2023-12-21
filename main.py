@@ -1,3 +1,7 @@
+"""
+Discord promotion link generator program.
+"""
+
 from time import sleep
 import contextlib
 import hashlib
