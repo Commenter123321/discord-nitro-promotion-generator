@@ -1,4 +1,4 @@
-# Discord Promotion Generator
+# [NOT WORKING ANYMORE] Discord Promotion Generator
 ## WARNING: THIS TOOL IS FOR EDUCATIONAL PURPOSES ONLY. PLEASE, DO NOT ABUSE THIS TOOL!
 
 **How does this work?**
